@@ -1,8 +1,8 @@
 # Releasing
 
-The repository includes a GitHub Actions release workflow that builds wheel/sdist artifacts and uploads them to a GitHub Release when a `v*` tag is pushed.
+The repository includes a GitHub Actions release workflow that builds wheel/sdist artifacts, uploads them to a GitHub Release, and publishes them to PyPI when a `v*` tag is pushed.
 
-It does not publish to PyPI yet.
+PyPI publishing uses Trusted Publishing through the GitHub `pypi` environment; no PyPI API token is required.
 
 ## Local preflight
 
@@ -11,8 +11,17 @@ ruff check .
 ruff format --check .
 pytest
 python -m build
-python -m pip install --force-reinstall dist/vivo_note_cli-*.whl
+uv tool install --force git+https://github.com/gobylor/vivo-note-cli.git
 vivo-note --help
+uv tool uninstall vivo-note-cli
+```
+
+After PyPI publish succeeds, verify the registry install path:
+
+```bash
+uv tool install --force vivo-note-cli
+vivo-note --help
+uv tool uninstall vivo-note-cli
 ```
 
 ## Tag release
@@ -22,11 +31,16 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-## Future PyPI Trusted Publishing
+If the `pypi` environment requires approval, approve the waiting `Publish to PyPI` job in GitHub Actions.
 
-When ready to publish to PyPI:
+## PyPI Trusted Publishing setup
 
-1. create the `vivo-note-cli` project on PyPI;
-2. configure PyPI Trusted Publishing for this GitHub repository and a protected release environment;
-3. add `pypa/gh-action-pypi-publish` to the release workflow;
-4. keep source distributions free of private exports, database snapshots, or local test artifacts.
+The PyPI pending publisher must match:
+
+- PyPI project: `vivo-note-cli`
+- Owner: `gobylor`
+- Repository: `vivo-note-cli`
+- Workflow: `release.yml`
+- Environment: `pypi`
+
+Keep source distributions free of private exports, database snapshots, or local test artifacts.

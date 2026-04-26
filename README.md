@@ -15,20 +15,24 @@ It is designed for safe local use:
 
 ## Install
 
-From source:
+Install from PyPI with `uv`:
 
 ```bash
-git clone https://github.com/gobylor/vivo-note-cli.git
-cd vivo-note-cli
-python3 -m pip install .
+uv tool install vivo-note-cli
 ```
 
-For development:
+If the first PyPI release has not completed yet, install the current GitHub version
+directly:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[dev]'
+uv tool install git+https://github.com/gobylor/vivo-note-cli.git
+```
+
+Upgrade or remove the CLI:
+
+```bash
+uv tool upgrade vivo-note-cli
+uv tool uninstall vivo-note-cli
 ```
 
 ## Quick start
