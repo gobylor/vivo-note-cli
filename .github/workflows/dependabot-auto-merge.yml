@@ -1,0 +1,64 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Enable auto-merge for safe Dependabot updates
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.repository == 'gobylor/vivo-note-cli'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Check auto-merge prerequisites
+        id: prerequisites
+        env:
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.allow_auto_merge')" != "true" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Repository auto-merge is disabled; skipping automatic merge setup."
+            exit 0
+          fi
+
+          if ! required_count=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${BASE_BRANCH}/protection" --jq '.required_status_checks.contexts | length' 2>/dev/null); then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Branch protection with required status checks is not configured; skipping automatic merge setup."
+            exit 0
+          fi
+
+          if [ "${required_count:-0}" -eq 0 ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "No required status checks are configured; skipping automatic merge setup."
+            exit 0
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Enable auto-merge for minor and patch updates
+        if: >-
+          steps.prerequisites.outputs.enabled == 'true' &&
+          (steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-patch')
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Leave major updates for manual review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          echo "Major Dependabot update detected; leaving PR for manual review."
+          echo "Dependencies: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "Update type: ${{ steps.metadata.outputs.update-type }}"
