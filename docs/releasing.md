@@ -10,6 +10,8 @@ PyPI publishing uses Trusted Publishing through the GitHub `pypi` environment; n
 ruff check .
 ruff format --check .
 pytest
+vivo-note install-skills --dry-run
+npx -y skills add . --list
 python -m build
 uv tool install --force git+https://github.com/gobylor/vivo-note-cli.git
 vivo-note --help

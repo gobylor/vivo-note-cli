@@ -19,20 +19,25 @@ Install from PyPI with `uv`:
 
 ```bash
 uv tool install vivo-note-cli
+vivo-note install-skills
 ```
 
-If the first PyPI release has not completed yet, install the current GitHub version
-directly:
-
-```bash
-uv tool install git+https://github.com/gobylor/vivo-note-cli.git
-```
+`vivo-note install-skills` installs the project AI-agent Skill globally so tools
+such as Codex, Claude Code, and Cursor can discover the safe `vivo-note`
+workflow. Restart your AI agent after installing the Skill so it reloads the new
+instructions.
 
 Upgrade or remove the CLI:
 
 ```bash
 uv tool upgrade vivo-note-cli
 uv tool uninstall vivo-note-cli
+```
+
+Manual Skill installation fallback:
+
+```bash
+npx -y skills add gobylor/vivo-note-cli -g -y
 ```
 
 ## Quick start

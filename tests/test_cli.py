@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from vivo_note_cli import cli
+
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -63,3 +65,63 @@ def test_cli_doctor_json(sample_db: Path) -> None:
     report = json.loads(result.stdout)
     assert report["ok"] is True
     assert report["required_tables"] == {"NoteBook": True, "Note": True}
+
+
+def test_cli_install_skills_dry_run() -> None:
+    result = run_cli("install-skills", "--dry-run")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "npx -y skills add gobylor/vivo-note-cli -g -y\n"
+
+
+def test_cli_install_skills_project_dry_run_omits_global_flag() -> None:
+    result = run_cli("install-skills", "--project", "--dry-run")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "npx -y skills add gobylor/vivo-note-cli -y\n"
+
+
+def test_cli_install_skills_repeats_agent_flags() -> None:
+    result = run_cli(
+        "install-skills",
+        "--agent",
+        "codex",
+        "--agent",
+        "claude-code",
+        "--dry-run",
+    )
+    assert result.returncode == 0, result.stderr
+    assert (
+        result.stdout
+        == "npx -y skills add gobylor/vivo-note-cli --agent codex --agent claude-code -g -y\n"
+    )
+
+
+def test_cli_install_skills_runs_without_shell(monkeypatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_run(cmd: list[str], *, check: bool, shell: bool) -> subprocess.CompletedProcess[str]:
+        calls.append({"cmd": cmd, "check": check, "shell": shell})
+        return subprocess.CompletedProcess(cmd, 7)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    assert cli.main(["install-skills", "--source", ".", "--project"]) == 7
+    assert calls == [
+        {
+            "cmd": ["npx", "-y", "skills", "add", ".", "-y"],
+            "check": False,
+            "shell": False,
+        }
+    ]
+
+
+def test_cli_install_skills_missing_npx_prints_manual_fallback(monkeypatch, capsys) -> None:
+    def fake_run(cmd: list[str], *, check: bool, shell: bool) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError("npx")
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    assert cli.main(["install-skills"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "npx was not found" in captured.err
+    assert "npx -y skills add gobylor/vivo-note-cli -g -y" in captured.err

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sqlite3
+import subprocess
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -17,6 +19,8 @@ from .formatters import (
     format_notebooks_json,
     format_notebooks_table,
 )
+
+DEFAULT_SKILL_SOURCE = "gobylor/vivo-note-cli"
 
 
 @contextmanager
@@ -104,6 +108,32 @@ def build_parser() -> argparse.ArgumentParser:
     _add_db_args(doctor_parser)
     doctor_parser.add_argument("--json", action="store_true", help="emit JSON health report")
     doctor_parser.set_defaults(handler=run_doctor)
+
+    skills_parser = subparsers.add_parser(
+        "install-skills",
+        help="install the vivo-note AI agent skill using the skills CLI",
+    )
+    skills_parser.add_argument(
+        "--source",
+        default=DEFAULT_SKILL_SOURCE,
+        help=f"skills source to install (default: {DEFAULT_SKILL_SOURCE})",
+    )
+    skills_parser.add_argument(
+        "--agent",
+        action="append",
+        help="target agent for the skills CLI; repeat to install for multiple agents",
+    )
+    skills_parser.add_argument(
+        "--project",
+        action="store_true",
+        help="install into the current project instead of globally",
+    )
+    skills_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the skills CLI command without running it",
+    )
+    skills_parser.set_defaults(handler=run_install_skills)
     return parser
 
 
@@ -169,6 +199,35 @@ def run_doctor(args: argparse.Namespace) -> int:
     else:
         sys.stdout.write(_format_doctor_table(report))
     return 0 if report.get("ok") else 1
+
+
+def _install_skills_command(args: argparse.Namespace) -> list[str]:
+    command = ["npx", "-y", "skills", "add", args.source]
+    for agent in args.agent or ():
+        command.extend(["--agent", agent])
+    if not args.project:
+        command.append("-g")
+    command.append("-y")
+    return command
+
+
+def run_install_skills(args: argparse.Namespace) -> int:
+    command = _install_skills_command(args)
+    printable_command = shlex.join(command)
+    if args.dry_run:
+        sys.stdout.write(printable_command + "\n")
+        return 0
+
+    try:
+        completed = subprocess.run(command, check=False, shell=False)
+    except FileNotFoundError:
+        print(
+            "error: npx was not found. Install Node.js/npm, then run this command manually:",
+            file=sys.stderr,
+        )
+        print(printable_command, file=sys.stderr)
+        return 1
+    return int(completed.returncode)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
