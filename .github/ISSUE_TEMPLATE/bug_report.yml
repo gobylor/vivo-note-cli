@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a reproducible bug without sharing private note content
+title: "Bug: "
+labels: [bug]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: vivo-note-cli version
+      placeholder: "vivo-note --version"
+  - type: dropdown
+    id: command
+    attributes:
+      label: Command
+      options:
+        - list
+        - export
+        - doctor
+        - other
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Use a synthetic schema or redacted example. Do not attach real NoteSync.db files.
+      placeholder: |
+        1. Run ...
+        2. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy check
+      description: Confirm you did not include private note text, database files, or raw exports.
+      placeholder: "I confirm this report is redacted."
